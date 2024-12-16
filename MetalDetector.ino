@@ -1,5 +1,7 @@
 #include <FreqCount.h>
+#include <GyverIO.h>
 #include "options.h"
+
 #include <EncButton.h>
 Button btn(BTN_PIN, INPUT_PULLUP);
 
@@ -7,8 +9,8 @@ Button btn(BTN_PIN, INPUT_PULLUP);
 Disp1637Colon disp(DIO_PIN, CLK_PIN);
 
 #include <GyverFilters.h>
-GMedian<6, int32_t> diffFilter;
-GKalman diffFilterKalman(6, 6, 0.25);
+GMedian<10, int32_t> diffFilter;
+GKalman diffFilterKalman(6, 6, 0.35);
 
 #include <EEManager.h>  // подключаем либу
 EEManager memory(data); // передаём нашу переменную (фактически её адрес)
@@ -18,10 +20,10 @@ EEManager memory(data); // передаём нашу переменную (фа�
 
 void setup() {
   Serial.begin(115200);
-  memory.begin(0, 'b');
+  memory.begin(0, 'a');
   disp.brightness(4);
   deviceInit();
-  dspPrint("StAr");
+  dspPrint("StaR");
 
   //Read out baseline frequency count, 100ms intervals
   FreqCount.begin(100);
@@ -41,19 +43,24 @@ void setup() {
     Serial.println(".");
     Serial.println("Generator error");
   }
-  delay(1000);
+  delay(2000);
   displayMode = DIFF;
 }
 
 void loop() {
+  disp.tick();
+  if (isLowLevelBattery) {
+     dspPrint("LLLL");
+     return;
+  }
   btn.tick();
   buzzerHandle();
-  disp.tick();
+  batteryControl();
   memory.tick();
   buzzerTrashHoldHandle();
   btnHandle();
   dspHandle();
-  
+  batteryHandle();
   //no sample ready yet, exit.
   if (!FreqCount.available()) return;
 

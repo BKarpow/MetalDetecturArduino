@@ -4,6 +4,7 @@
 
 #define DIO_PIN       7
 #define CLK_PIN       8
+#define BATTERY_PIN   A0
 #define POT_SENS_PIN  A1 
 
 #define BTN_PIN       3
@@ -20,7 +21,8 @@ enum {
   DIFF,
   TRASHHOLD,
   ERROR_GENERATOR,
-  FREQ
+  FREQ,
+  VCC
   
 } displayMode;
 
@@ -40,3 +42,6 @@ uint32_t count = 0;
 int32_t difference = 0;
 int32_t diffFiltVal = 0;
 int32_t diffFiltKalmanVal = 0;
+
+uint8_t batteryLevel = 75;
+bool isLowLevelBattery = false;

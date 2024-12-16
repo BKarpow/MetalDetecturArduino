@@ -1,13 +1,49 @@
 #pragma once
 
+long readVcc() 
+{
+  // Вимірюємо внутрішнє опорне джерело 1.1 В
+  ADMUX = _BV(REFS0) | _BV(MUX3) | _BV(MUX2) | _BV(MUX1); // Вибір внутрішнього 1.1 В як входу АЦП
+  delay(2); // Затримка для стабілізації
+  ADCSRA |= _BV(ADSC); // Запускаємо конверсію АЦП
+  while (bit_is_set(ADCSRA, ADSC)); // Чекаємо завершення
+
+  uint8_t low = ADCL;  // Зчитуємо молодший байт
+  uint8_t high = ADCH; // Зчитуємо старший байт
+  long result = (high << 8) | low; // Об'єднуємо обидва байти
+
+  // Обчислюємо VCC за формулою
+  result = 1125300L / result; // 1.1 В * 1023 * 1000 / результат вимірювання
+  return result; // Повертаємо VCC у мілівольтах
+}
+
+uint16_t getBatteryMilivolt()
+{
+  uint16_t bRaw = analogRead(BATTERY_PIN);
+  return (uint16_t)(bRaw * ( 5000L / 1023 ));
+}
+
+void batteryHandle()
+{
+  static uint16_t t;
+  uint16_t cm = millis();
+  if ( cm - t > 1024 ) {
+    t = cm;
+    batteryLevel = map(getBatteryMilivolt(), 2900, 4150, 1, 100);
+  }
+}
+
+void batteryControl()
+{
+  isLowLevelBattery = batteryLevel < 10;
+}
+
 void deviceInit()
 {
   pinMode(POT_SENS_PIN, INPUT);
   
-  pinMode(9, OUTPUT);
-  digitalWrite(9, LOW); // D9 Pin GND
   
-  pinMode(BUZZER_PIN, OUTPUT);
+  gio::init(BUZZER_PIN, OUTPUT);
 }
 
 void serialInfo()
@@ -46,12 +82,15 @@ void buzzerTrashHoldHandle()
 
 void buzzerHandle()
 {
-  if (!data.useBuzzer) return;
-  if (trashHold == TRASH_HOLD_MAX) {
-    digitalWrite(BUZZER_PIN, LOW);
+  if (!data.useBuzzer) {
+    gio::write(BUZZER_PIN, LOW);
     return;
   }
-  digitalWrite(BUZZER_PIN, (difference > trashHold) ? HIGH : LOW);
+  if (trashHold == TRASH_HOLD_MAX) {
+    gio::write(BUZZER_PIN, LOW);
+    return;
+  }
+  gio::write(BUZZER_PIN, (difference > trashHold) ? HIGH : LOW);
 }
 
 void autoAdjust() 
@@ -96,6 +135,18 @@ void dspErrorGenerator()
 void dspShowSrart()
 {
   dspPrint("StAr");
+}
+
+void dspShowVcc()
+{
+  uint16_t vcc = readVcc() / 100.0;
+  disp.clear();
+  disp.setCursorEnd();
+  disp.printRight(true);
+  disp.fillChar('V');
+  disp.print(vcc);
+  disp.update();
+  disp.delay(TIMEOUT_SHOW_DELAY);
 }
 
 void dspShowDiff()
@@ -174,6 +225,7 @@ void dspHandle()
     case TRASHHOLD: dspShowTrashHold(); break;
     case ERROR_GENERATOR: dspErrorGenerator(); break;
     case FREQ: dspShowFreq(); break;
+    case VCC: dspShowVcc(); break;
   }
 }
 
@@ -193,6 +245,7 @@ void btnHandle()
     dspPrint("BS_0");
     baseLine = count;
   }
+  if (btn.step(2)) displayMode = FREQ;
   
   if (btn.hasClicks()) {
     switch(btn.getClicks()) {
@@ -205,7 +258,7 @@ void btnHandle()
         displayMode = TRASHHOLD;
         break;
       case 3:
-        displayMode = FREQ;
+        displayMode = VCC;
         break;
       case 4:
         data.useFilter = true;
