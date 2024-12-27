@@ -2,6 +2,8 @@
 
 #include <Arduino.h>
 
+#define VERSION "0.1.1-ng"
+
 #define DIO_PIN       7
 #define CLK_PIN       8
 #define BATTERY_PIN   A0

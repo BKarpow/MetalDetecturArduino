@@ -43,6 +43,10 @@ void deviceInit()
   pinMode(POT_SENS_PIN, INPUT);
   pinMode(BATTERY_PIN, INPUT);
   pinMode(BUZZER_PIN, OUTPUT);
+  
+  // For buzzer GND
+  pinMode(9, OUTPUT);
+  digitalWrite(9, LOW);
 }
 
 void serialInfo()
@@ -89,7 +93,7 @@ void buzzerHandle()
     digitalWrite(BUZZER_PIN, LOW);
     return;
   }
-  digitalWrite(BUZZER_PIN, (difference > trashHold) ? HIGH : LOW);
+  digitalWrite(BUZZER_PIN, (difference > 2) ? HIGH : LOW);
 }
 
 void autoAdjust() 
@@ -101,11 +105,21 @@ void autoAdjust()
   }
 }
 
+void initBaseLine() 
+{
+  for(uint8_t i = 0; i < 10 ; i++) {
+    // wait if any serial is going on
+    FreqCounter::f_comp=10;   // Cal Value / Calibrate with professional Freq Counter
+    FreqCounter::start(100);  // 100 ms Gate Time
 
+    while (FreqCounter::f_ready == 0) ;
+    baseLine = FreqCounter::f_freq;
+  }
+}
 
 void readGenerator()
 {
-  count = FreqCount.read();
+  count = FreqCounter::f_freq;
   difference = baseLine - count;
   difference = abs(difference);
   diffFiltVal = diffFilter.filtered(difference);

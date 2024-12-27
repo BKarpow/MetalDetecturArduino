@@ -1,4 +1,4 @@
-#include <FreqCount.h>
+#include <FreqCounter.h>
 #include "options.h"
 
 #include <EncButton.h>
@@ -23,14 +23,10 @@ void setup() {
   disp.brightness(4);
   deviceInit();
   dspPrint("StaR");
-
-  //Read out baseline frequency count, 100ms intervals
-  FreqCount.begin(100);
-  while (!FreqCount.available()) {
-    delay(10);
-  }
-
-  baseLine = FreqCount.read();
+  delay(2000);
+  initBaseLine();
+  
+  
 
   if (baseLine > 10000 ) {
     dspPrint("RUNG");
@@ -42,7 +38,7 @@ void setup() {
     Serial.println(".");
     Serial.println("Generator error");
   }
-  delay(2000);
+  delay(200);
   displayMode = DIFF;
 }
 
@@ -57,8 +53,12 @@ void loop() {
   btnHandle();
   dspHandle();
   batteryHandle();
+  
+  // wait if any serial is going on
+  FreqCounter::f_comp=10;   // Cal Value / Calibrate with professional Freq Counter
+  FreqCounter::start(100);  // 100 ms Gate Time
   //no sample ready yet, exit.
-  if (!FreqCount.available()) return;
+  while (FreqCounter::f_ready == 0) ;
   
   //Read how many pulses in 100 milliseconds
   readGenerator();
