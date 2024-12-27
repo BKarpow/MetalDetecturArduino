@@ -1,5 +1,4 @@
 #include <FreqCount.h>
-#include <GyverIO.h>
 #include "options.h"
 
 #include <EncButton.h>
@@ -19,7 +18,7 @@ EEManager memory(data); // передаём нашу переменную (фа�
 
 
 void setup() {
-  Serial.begin(115200);
+  Serial.begin(9600);
   memory.begin(0, 'a');
   disp.brightness(4);
   deviceInit();
@@ -49,10 +48,7 @@ void setup() {
 
 void loop() {
   disp.tick();
-  if (isLowLevelBattery) {
-     dspPrint("LLLL");
-     return;
-  }
+  
   btn.tick();
   buzzerHandle();
   batteryControl();
@@ -63,10 +59,10 @@ void loop() {
   batteryHandle();
   //no sample ready yet, exit.
   if (!FreqCount.available()) return;
-
+  
   //Read how many pulses in 100 milliseconds
   readGenerator();
-
+  serialInfo();
   // Check Generator
   checkWorkGenerator();
   

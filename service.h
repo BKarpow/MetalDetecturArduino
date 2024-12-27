@@ -1,6 +1,6 @@
 #pragma once
 
-long readVcc() 
+long readVcc()
 {
   // Вимірюємо внутрішнє опорне джерело 1.1 В
   ADMUX = _BV(REFS0) | _BV(MUX3) | _BV(MUX2) | _BV(MUX1); // Вибір внутрішнього 1.1 В як входу АЦП
@@ -20,7 +20,7 @@ long readVcc()
 uint16_t getBatteryMilivolt()
 {
   uint16_t bRaw = analogRead(BATTERY_PIN);
-  return (uint16_t)(bRaw * ( 5000L / 1023 ));
+  return constrain( (uint16_t)(bRaw * ( 5000 / 1023)), 2700, 4200);
 }
 
 void batteryHandle()
@@ -29,7 +29,7 @@ void batteryHandle()
   uint16_t cm = millis();
   if ( cm - t > 1024 ) {
     t = cm;
-    batteryLevel = map(getBatteryMilivolt(), 2900, 4150, 1, 100);
+    batteryLevel = map(getBatteryMilivolt(), 2700, 4200, 1, 100);
   }
 }
 
@@ -41,9 +41,8 @@ void batteryControl()
 void deviceInit()
 {
   pinMode(POT_SENS_PIN, INPUT);
-  
-  
-  gio::init(BUZZER_PIN, OUTPUT);
+  pinMode(BATTERY_PIN, INPUT);
+  pinMode(BUZZER_PIN, OUTPUT);
 }
 
 void serialInfo()
@@ -83,14 +82,14 @@ void buzzerTrashHoldHandle()
 void buzzerHandle()
 {
   if (!data.useBuzzer) {
-    gio::write(BUZZER_PIN, LOW);
+    digitalWrite(BUZZER_PIN, LOW);
     return;
   }
   if (trashHold == TRASH_HOLD_MAX) {
-    gio::write(BUZZER_PIN, LOW);
+    digitalWrite(BUZZER_PIN, LOW);
     return;
   }
-  gio::write(BUZZER_PIN, (difference > trashHold) ? HIGH : LOW);
+  digitalWrite(BUZZER_PIN, (difference > trashHold) ? HIGH : LOW);
 }
 
 void autoAdjust() 
@@ -121,7 +120,8 @@ void readGenerator()
 void dspPrint(String s)
 {
   disp.clear();
-  disp.setCursor(0);
+  disp.setCursorEnd();
+  disp.printRight(true);
   disp.print(s.c_str());
   disp.update();
   disp.delay(TIMEOUT_SHOW_DELAY);
@@ -139,12 +139,12 @@ void dspShowSrart()
 
 void dspShowVcc()
 {
-  uint16_t vcc = readVcc() / 100.0;
+  
   disp.clear();
   disp.setCursorEnd();
   disp.printRight(true);
-  disp.fillChar('V');
-  disp.print(vcc);
+  disp.fillChar('b');
+  disp.print(batteryLevel);
   disp.update();
   disp.delay(TIMEOUT_SHOW_DELAY);
 }
@@ -154,7 +154,7 @@ void dspShowDiff()
   disp.clear();
   disp.setCursorEnd();
   disp.printRight(true);
-  disp.fillChar('_');
+  disp.fillChar( (isLowLevelBattery) ? "L" : "_");
   disp.print(difference);
   disp.update();
 }
@@ -219,8 +219,7 @@ void dspHandle()
 {
   switch(displayMode) {
     case DIFF: 
-     if (data.useBuzzer) dspShowDiff();
-     else dspLevelInfo();
+     dspShowDiff();
     break;
     case TRASHHOLD: dspShowTrashHold(); break;
     case ERROR_GENERATOR: dspErrorGenerator(); break;
@@ -255,7 +254,7 @@ void btnHandle()
         memory.update();
         break;
       case 2:
-        displayMode = TRASHHOLD;
+        displayMode = FREQ;
         break;
       case 3:
         displayMode = VCC;
